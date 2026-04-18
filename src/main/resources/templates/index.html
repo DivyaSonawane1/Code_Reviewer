@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Code Reviewer</title>
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Monaco -->
+    <script src="https://unpkg.com/monaco-editor@0.45.0/min/vs/loader.js"></script>
+</head>
+
+<body class="bg-gray-900 text-white">
+
+<div class="flex h-screen">
+
+    <!-- Sidebar -->
+    <div class="w-64 bg-gray-800 p-4 border-r border-gray-700">
+        <h2 class="text-xl font-bold mb-4">📂 History</h2>
+        <ul id="history" class="space-y-2 text-sm"></ul>
+    </div>
+
+    <!-- Main -->
+    <div class="flex-1 p-6 flex flex-col">
+
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-4">
+            <h1 class="text-2xl font-bold">🚀 AI Code Reviewer</h1>
+
+            <select id="language" class="bg-gray-800 px-3 py-1 rounded border border-gray-600">
+                <option>Java</option>
+                <option>Python</option>
+                <option>JavaScript</option>
+            </select>
+        </div>
+
+        <!-- Editor -->
+        <div id="editor" class="h-72 border border-gray-700 rounded mb-4"></div>
+
+        <!-- Button -->
+        <button id="btn"
+            onclick="review()"
+            class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded font-semibold w-fit">
+            Review Code
+        </button>
+
+        <!-- Status -->
+        <p id="status" class="mt-2 text-gray-400"></p>
+
+        <!-- Result -->
+        <div id="resultBox"
+             class="mt-4 bg-gray-800 p-4 rounded border border-gray-700 overflow-auto">
+            <h3 class="font-bold mb-2">Result</h3>
+            <pre id="result" class="text-sm whitespace-pre-wrap"></pre>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+let editor;
+
+require.config({
+    paths: { vs: 'https://unpkg.com/monaco-editor@0.45.0/min/vs' }
+});
+
+require(['vs/editor/editor.main'], function () {
+    editor = monaco.editor.create(document.getElementById('editor'), {
+        value: "// Write your code here",
+        language: "java",
+        theme: "vs-dark",
+        automaticLayout: true
+    });
+});
+
+async function review() {
+    const btn = document.getElementById("btn");
+    const result = document.getElementById("result");
+    const status = document.getElementById("status");
+
+    btn.disabled = true;
+    status.innerText = "⏳ Reviewing...";
+
+    try {
+        const response = await fetch('/api/reviews', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                code: editor.getValue(),
+                language: document.getElementById('language').value
+            })
+        });
+
+        const data = await response.json();
+
+        try {
+            const review = JSON.parse(data.review);
+
+            result.innerText =
+                "📌 Summary:\n" + review.summary + "\n\n" +
+                "🐞 Bugs:\n- " + review.bugs.join("\n- ") + "\n\n" +
+                "🔐 Security:\n- " + review.security.join("\n- ") + "\n\n" +
+                "⚡ Performance:\n- " + review.performance.join("\n- ") + "\n\n" +
+                "✨ Improvements:\n- " + review.improvements.join("\n- ") + "\n\n" +
+                "⭐ Rating: " + review.rating + "/10";
+
+        } catch {
+            result.innerText = data.review;
+        }
+
+        status.innerText = "✅ Done";
+
+    } catch (e) {
+        result.innerText = "❌ Error: " + e;
+        status.innerText = "⚠️ Failed";
+    }
+
+    btn.disabled = false;
+    loadHistory();
+}
+
+async function loadHistory() {
+    const res = await fetch('/api/reviews');
+    const data = await res.json();
+
+    const history = document.getElementById('history');
+    history.innerHTML = "";
+
+    data.reverse().forEach(item => {
+        const li = document.createElement("li");
+
+        li.className =
+            "bg-gray-700 p-2 rounded cursor-pointer hover:bg-gray-600 transition";
+
+        li.innerText = item.language + " #" + item.id;
+
+        li.onclick = () => {
+            editor.setValue(item.code);
+            document.getElementById('result').innerText = item.review;
+        };
+
+        history.appendChild(li);
+    });
+}
+
+window.onload = loadHistory;
+</script>
+
+</body>
+</html>
