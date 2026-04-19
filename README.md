@@ -1,4 +1,8 @@
-# 🚀 AI Code Reviewer
+# 🚀 AI Code Reviewer 
+
+<p align="center">
+  <img src="src/main/resources/templates/assets/codelens.png" alt="AI Code Reviewer" />
+</p>
 
 An AI-powered full-stack application that analyzes code for bugs, security issues, performance problems, and improvements using Google Gemini API.
 
